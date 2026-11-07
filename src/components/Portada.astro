@@ -281,9 +281,10 @@ const tamanoTitulo = tamanoNombres(novios, 13, 182);
         display: block;
         width: 100%;
         height: 100%;
-        /* La foto entera, a su tamaño, sin recortarla ni agrandarla */
-        object-fit: contain;
-        object-position: center top;
+        /* A todo el ancho. La foto es vertical: se corre para que las
+           caras queden arriba del fundido, no dentro de él */
+        object-fit: cover;
+        object-position: center 10%;
     }
 
     /*
