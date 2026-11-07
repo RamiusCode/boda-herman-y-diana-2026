@@ -119,13 +119,18 @@ const reservado = "Hemos reservado";
         color: #9a7433;
     }
 
-    /* Puede bajar de renglón: un apellido doble no se achica */
+    /*
+       Puede bajar de renglón: un apellido doble no se achica. Si baja,
+       reparte las palabras parejo entre los renglones en vez de dejar
+       una sola abajo ("Sra." huérfana).
+    */
     .nombre {
         margin: 2.5cqw 0 0;
         padding: 0;
-        font-size: 10cqw;
+        font-size: 8.6cqw;
         line-height: 1.2;
         color: #4f6b45;
+        text-wrap: balance;
     }
 
     .adorno {
