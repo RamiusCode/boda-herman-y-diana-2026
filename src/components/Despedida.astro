@@ -26,11 +26,24 @@ export interface Props {
     conectado?: boolean;
 }
 const { pases = 0, invitado = "", conectado = false } = Astro.props;
-// Con formulario: un invitado fijo (muestra) o la versión conectada
-const conFormulario = Boolean(invitado) || conectado;
-// Mientras no llega el invitado de la base, la ventana lleva un número
-// de molde: el script copia ese botón uno por pase
-const pasesVentana = invitado ? pases : 1;
+
+/*
+   Cómo se confirma. En true, en todos los links va el botón "Confirmar
+   asistencia" que abre la ventana del formulario, y no se usa WhatsApp.
+   Mientras el link no traiga un invitado del sistema, la ventana muestra
+   `invitadoGenerico` y la respuesta no se guarda: solo agradece.
+   En false vuelve la casilla del nombre con los botones de WhatsApp.
+*/
+const soloFormulario = true;
+const invitadoGenerico = "Querido invitado";
+
+// Con formulario: un invitado fijo (muestra), la versión conectada o
+// la confirmación solo por formulario
+const conFormulario = Boolean(invitado) || conectado || soloFormulario;
+const nombreVentana = invitado || invitadoGenerico;
+// Sin pases (link principal o esperando la base), la ventana lleva un
+// número de molde: el script copia ese botón uno por pase
+const pasesVentana = pases > 0 ? pases : 1;
 
 import { enlaceConfirmar } from "../scripts/mensajeConfirmar";
 import { pasesReservados } from "../scripts/frasesPase";
@@ -62,8 +75,9 @@ const noviosMensaje = "Herman y Diana";
 const fecha = "19 de diciembre de 2026";
 // Un botón por número: el invitado elige a quién le confirma
 const contactos = [
-    { texto: "Confirmar con el novio", telefono: "59178447718" },
-    { texto: "Confirmar con la novia", telefono: "59172684699" },
+    // Sin uso mientras soloFormulario esté en true
+    { texto: "Confirmar con el novio", telefono: "" },
+    { texto: "Confirmar con la novia", telefono: "" },
 ];
 const placeholderNombre = "Escribe tu nombre";
 /*
@@ -122,12 +136,12 @@ const pase =
         <div class="tarjeta">
             <p class="t-frase">{frase}</p>
             <p class="t-esperamos font-great-vibes">{esperamos}</p>
-            {!invitado && pase && <p class="t-pase">{pase}</p>}
+            {!invitado && !soloFormulario && pase && <p class="t-pase">{pase}</p>}
             {conFormulario && (
             <div
                 class="botones"
                 id="botones-formulario"
-                style={invitado ? undefined : "display: none"}
+                style={invitado || soloFormulario ? undefined : "display: none"}
             >
                 <button type="button" class="boton" id="abrir-confirmacion">
                     <span class="boton-texto">Confirmar asistencia</span>
@@ -135,7 +149,7 @@ const pase =
                 </button>
             </div>
             )}
-            {!invitado && (<>
+            {!invitado && !soloFormulario && (<>
             <label class="t-nombre" data-whatsapp>
                 <span class="t-nombre-check" aria-hidden="true">✓</span>
                 <input
@@ -203,13 +217,14 @@ const pase =
                 id="ventana-confirmacion"
                 data-pases={pasesVentana}
                 data-conectado={conectado ? "" : undefined}
+                data-solo-formulario={soloFormulario ? "" : undefined}
             >
                 <button type="button" class="c-cerrar" aria-label="Cerrar">×</button>
 
                 <!-- Paso 1: el formulario -->
                 <form class="c-paso c-formulario" method="dialog">
                     <p class="c-titulo">Confirmación de asistencia</p>
-                    <p class="c-nombre font-great-vibes">{invitado}</p>
+                    <p class="c-nombre font-great-vibes">{nombreVentana}</p>
                     <div class="c-adorno" aria-hidden="true">
                         <i class="adorno-linea adorno-izq"></i>
                         <i class="adorno-rombo"></i>
@@ -219,22 +234,6 @@ const pase =
                         Tienes <strong>{pasesVentana}</strong> <span class="c-palabra">{pasesReservados(pasesVentana)}</span>.
                     </p>
 
-                    <p class="c-pregunta">¿Cuántos asistirán?</p>
-                    <div class="c-cantidades" role="radiogroup" aria-label="Cuántos asistirán">
-                        {
-                            Array.from({ length: pasesVentana }).map((_, i) => (
-                                <label class="c-cantidad">
-                                    <input
-                                        type="radio"
-                                        name="asistentes"
-                                        value={i + 1}
-                                        checked={i + 1 === pasesVentana}
-                                    />
-                                    <span>{i + 1}</span>
-                                </label>
-                            ))
-                        }
-                    </div>
 
                     <button type="submit" class="boton c-confirmar" value="si">
                         <span class="boton-texto">Confirmar asistencia</span>
@@ -246,7 +245,7 @@ const pase =
                 <div class="c-paso c-gracias" hidden>
                     <div class="c-icono" aria-hidden="true">✓</div>
                     <p class="c-titulo">¡Muchas gracias!</p>
-                    <p class="c-nombre font-great-vibes">{invitado}</p>
+                    <p class="c-nombre font-great-vibes">{nombreVentana}</p>
                     <div class="c-adorno" aria-hidden="true">
                         <i class="adorno-linea adorno-izq"></i>
                         <i class="adorno-rombo"></i>
@@ -900,6 +899,9 @@ const pase =
         if (!ventana || !abrir) return;
 
         const conectada = ventana.hasAttribute("data-conectado");
+        const soloFormulario = ventana.hasAttribute("data-solo-formulario");
+        // Recién con un invitado de la base la respuesta se guarda
+        let hayInvitado = false;
         const formulario = ventana.querySelector<HTMLFormElement>(".c-formulario")!;
         const gracias = ventana.querySelector<HTMLElement>(".c-gracias")!;
         const respuesta = ventana.querySelector<HTMLElement>(".c-respuesta")!;
@@ -1036,8 +1038,10 @@ const pase =
         }
 
         // Cuál de las dos formas de confirmar se ve en la tarjeta
-        let conFormulario = !conectada;
+        let conFormulario = !conectada || soloFormulario;
         function usarFormulario(si: boolean) {
+            // Solo formulario: no hay WhatsApp al que volver
+            if (soloFormulario) si = true;
             if (si === conFormulario) return;
             conFormulario = si;
             document
@@ -1067,6 +1071,7 @@ const pase =
                 return;
             }
 
+            hayInvitado = true;
             llenar(inv, primeraVez);
             usarFormulario(true);
         }
@@ -1095,8 +1100,8 @@ const pase =
                 (e.submitter as HTMLButtonElement | null)?.value !== "no";
             const cantidad = elegida();
 
-            // La muestra no guarda nada
-            if (!conectada) {
+            // La muestra, y el link sin invitado, no guardan nada
+            if (!conectada || !hayInvitado) {
                 agradecer(viene, cantidad);
                 return;
             }

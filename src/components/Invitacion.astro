@@ -65,7 +65,7 @@ const { pases = 0, invitado = "", conectado = false } = Astro.props;
     {/* <Foto1 /> */}
     <Agradecimiento />
     <Despedida
-        pases={invitado ? pases : 0}
+        pases={pases}
         invitado={invitado}
         conectado={conectado}
     />
